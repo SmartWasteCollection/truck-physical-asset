@@ -1,0 +1,50 @@
+name: Build and Test
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    strategy:
+      matrix:
+        os: [ ubuntu, macos, windows ]
+        java_version: [ 17 ]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: adopt
+          java-version: ${{ matrix.java_version }}
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+      - name: AZ Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Build
+        run: ./gradlew build
+      - name: Lint Check
+        run: ./gradlew ktlintCheck
+      - name: Test
+        run: ./gradlew test
+      - name: Generate jacoco report
+        run: ./gradlew jacocoTestReport
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: app/build/reports/jacoco/test/jacocoTestReport.xml
+          fail_ci_if_error: true
+          verbose: true
