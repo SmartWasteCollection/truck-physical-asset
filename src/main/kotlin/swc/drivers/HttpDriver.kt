@@ -1,6 +1,5 @@
 package swc.drivers
 
-import swc.CURRENT_TRUCK
 import swc.drivers.JsonDriver.parseArray
 import swc.drivers.JsonDriver.toMission
 import swc.entities.Mission
@@ -25,6 +24,6 @@ object HttpDriver {
         return parseArray(response.body())
             .map { it.asJsonObject.toMission() }
             .filter { !it.isCompleted() }
-            .find { it.truckId == CURRENT_TRUCK }
+            .find { it.truckId == "" }
     }
 }
