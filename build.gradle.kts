@@ -13,7 +13,9 @@ repositories {
 
 dependencies {
     implementation("com.azure:azure-digitaltwins-core:1.3.1")
+    implementation("com.azure:azure-messaging-servicebus:7.10.1")
     implementation("com.azure:azure-identity:1.5.4")
+    implementation("com.microsoft.azure.sdk.iot:iot-device-client:1.30.1")
     implementation("com.google.code.gson:gson:2.9.1")
     testImplementation(kotlin("test"))
 }
