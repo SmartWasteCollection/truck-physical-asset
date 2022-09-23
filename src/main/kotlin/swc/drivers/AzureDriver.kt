@@ -7,6 +7,7 @@ import com.azure.digitaltwins.core.DigitalTwinsClientBuilder
 import com.azure.identity.AzureCliCredentialBuilder
 import com.azure.messaging.servicebus.ServiceBusClientBuilder
 import com.azure.messaging.servicebus.ServiceBusProcessorClient
+import io.github.cdimascio.dotenv.dotenv
 import swc.drivers.JsonDriver.parse
 import swc.drivers.JsonDriver.toTruck
 import swc.entities.Truck
@@ -14,9 +15,8 @@ import swc.view.TruckGUI
 
 object AzureDriver {
     object Constants {
-        const val TRUCK_DT_MODEL_ID = "dtmi:swc:Truck;1"
-        const val DT_SERVICE_ENDPOINT = "https://test-instance.api.wcus.digitaltwins.azure.net/"
-        const val CONNECTION_STRING = "Endpoint=sb://swc-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=2CC1DN11vk6jggICwJFojsVNxAE4yohQFpdt9+VwTK8="
+        val DT_SERVICE_ENDPOINT: String = dotenv()["DT_SERVICE_ENDPOINT"]
+        val CONNECTION_STRING: String = dotenv()["CONNECTION_STRING"]
     }
 
     object Authentication {

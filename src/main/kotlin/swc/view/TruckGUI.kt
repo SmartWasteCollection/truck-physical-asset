@@ -66,7 +66,7 @@ object TruckGUI {
                 val value = Gson().fromJson(it.message.body.toString(), JsonObject::class.java)["patch"]
                     .asJsonArray.first().asJsonObject
                 when (value["path"].asString) {
-                    "/occupiedVolume/value" -> this.volume.text = "Occupied volume: ${value["value"].asDouble}L"
+                    "/occupiedVolume/value" -> this.occupiedVolume.value = value["value"].asDouble
                     "/position/longitude" -> this.longitude.value = value["value"].asDouble
                     "/position/latitude" -> this.latitude.value = value["value"].asDouble
                     "/inMission" -> this.inMission.text = "In mission: ${value["value"].asBoolean}"

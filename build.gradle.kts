@@ -12,6 +12,7 @@ repositories {
 }
 
 dependencies {
+    implementation("io.github.cdimascio:dotenv-kotlin:6.3.1")
     implementation("com.azure:azure-digitaltwins-core:1.3.1")
     implementation("com.azure:azure-messaging-servicebus:7.10.1")
     implementation("com.azure:azure-identity:1.5.4")
