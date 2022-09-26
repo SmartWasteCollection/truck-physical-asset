@@ -4,6 +4,8 @@ import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import swc.drivers.AzureDriver
+import swc.drivers.HttpDriver.getCollectionPoints
+import swc.drivers.HttpDriver.getMission
 import swc.drivers.Operations
 import swc.entities.Truck
 import java.awt.Dimension
@@ -69,7 +71,10 @@ object TruckGUI {
                     "/occupiedVolume/value" -> this.occupiedVolume.value = value["value"].asDouble
                     "/position/longitude" -> this.longitude.value = value["value"].asDouble
                     "/position/latitude" -> this.latitude.value = value["value"].asDouble
-                    "/inMission" -> this.inMission.text = "In mission: ${value["value"].asBoolean}"
+                    "/inMission" -> {
+                        this.inMission.text = "In mission: ${value["value"].asBoolean}"
+                        this.startMission.isEnabled = value["value"].asBoolean
+                    }
                     else -> println("Unknown path: ${value["path"].asString}")
                 }
             }
@@ -125,6 +130,17 @@ object TruckGUI {
         }
         private val capacity = JLabel("Capacity (L): ${truck.capacity}")
         private val inMission = JLabel("In mission: ${truck.isInMission}")
+        private val startMission = JButton("Start Mission").also {
+            it.isEnabled = false
+            it.addChangeListener { e ->
+                (e.source as JButton).isEnabled = false
+                val collectionPoints = getCollectionPoints()
+                getMission(truck.truckId)?.missionSteps
+                        ?.map { collectionPoints.first { cp -> cp.id == it.stepId }.position }
+                        ?.zipWithNext()
+                // executeMission(latitude, longitude)
+            }
+        }
 
         init {
             this.layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -133,6 +149,7 @@ object TruckGUI {
             this.add(CustomFormElement("Occupied volume (L):", this.occupiedVolume))
             this.add(this.capacity)
             this.add(this.inMission)
+            this.add(this.startMission)
             frame.add(this)
             frame.isVisible = true
             AzureDriver.Events.listenToEvents(this)

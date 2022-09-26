@@ -3,6 +3,7 @@ package swc.drivers
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import swc.drivers.JsonDriver.toTruck
 import swc.entities.*
 import java.time.LocalDate
 import kotlin.text.Typography.dollar
@@ -10,6 +11,7 @@ import kotlin.text.Typography.dollar
 object JsonDriver {
     object Fields {
         const val MISSION_ID: String = "missionId"
+        const val COLLECTION_POINT_ID: String = "id"
         const val TRUCK_ID: String = "truckId"
         const val DATE: String = "date"
         const val TYPE_OF_WASTE: String = "typeOfWaste"
@@ -40,6 +42,11 @@ object JsonDriver {
         this[Fields.TYPE_OF_WASTE].asJsonObject.toTypeOfWaste(),
         this[Fields.TYPE_OF_MISSION].asString.toTypeOfMission(),
         this[Fields.MISSION_STEPS].asJsonArray.map { it.asJsonObject.toMissionStep() }.toList()
+    )
+
+    fun JsonObject.toCollectionPoint(): CollectionPoint = CollectionPoint(
+        this[Fields.COLLECTION_POINT_ID].asString,
+        this[Fields.POSITION].asJsonObject.toPosition()
     )
 
     fun JsonObject.toTruck(): Truck = Truck(
