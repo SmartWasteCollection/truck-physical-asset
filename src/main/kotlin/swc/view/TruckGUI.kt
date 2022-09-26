@@ -3,10 +3,14 @@ package swc.view
 import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import swc.drivers.AzureDriver
 import swc.drivers.HttpDriver.getCollectionPoints
 import swc.drivers.HttpDriver.getMission
+import swc.drivers.HttpDriver.getRoute
 import swc.drivers.Operations
+import swc.drivers.Operations.simulateStep
 import swc.entities.Truck
 import java.awt.Dimension
 import java.awt.FlowLayout
@@ -135,10 +139,19 @@ object TruckGUI {
             it.addChangeListener { e ->
                 (e.source as JButton).isEnabled = false
                 val collectionPoints = getCollectionPoints()
-                getMission(truck.truckId)?.missionSteps
+                val mission = getMission(truck.truckId)
+                val steps = mission?.missionSteps
                         ?.map { collectionPoints.first { cp -> cp.id == it.stepId }.position }
+                        ?.toMutableList().also { pos -> pos?.add(0, truck.position) }
                         ?.zipWithNext()
-                // executeMission(latitude, longitude)
+                        ?.map { p -> getRoute(p.first, p.second) }
+                suspend {
+                    coroutineScope {
+                        launch {
+                            steps?.forEachIndexed { i, s -> simulateStep(mission, i, s) }
+                        }
+                    }
+                }
             }
         }
 
