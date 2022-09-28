@@ -1,5 +1,6 @@
 package swc.view
 
+import com.azure.digitaltwins.core.implementation.models.ErrorResponseException
 import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -9,20 +10,13 @@ import swc.drivers.AzureDriver
 import swc.drivers.HttpDriver.getCollectionPoints
 import swc.drivers.HttpDriver.getMission
 import swc.drivers.HttpDriver.getRoute
+import swc.drivers.HttpDriver.getTruck
 import swc.drivers.Operations
 import swc.drivers.Operations.simulateStep
 import swc.entities.Truck
 import java.awt.Dimension
 import java.awt.FlowLayout
-import javax.swing.BoxLayout
-import javax.swing.JButton
-import javax.swing.JComponent
-import javax.swing.JFrame
-import javax.swing.JLabel
-import javax.swing.JPanel
-import javax.swing.JSpinner
-import javax.swing.JTextField
-import javax.swing.SwingUtilities
+import javax.swing.*
 
 object TruckGUI {
     class TruckFrame(title: String) : JFrame() {
@@ -31,7 +25,8 @@ object TruckGUI {
             this.defaultCloseOperation = EXIT_ON_CLOSE
             this.size = Dimension(800, 600)
             this.setLocationRelativeTo(null)
-            this.add(SelectTruckPanel(this))
+            //this.add(SelectTruckPanel(this))
+            this.add(TruckPanel(this))
         }
     }
 
@@ -47,7 +42,7 @@ object TruckGUI {
                 Operations.getTruck(this.truckId.text).thenApply {
                     SwingUtilities.invokeLater {
                         frame.remove(this)
-                        TruckPanel(frame, it)
+                        TruckPanel(frame)
                     }
                 }
             }
@@ -66,8 +61,9 @@ object TruckGUI {
         }
     }
 
-    class TruckPanel(frame: JFrame, truck: Truck) : JPanel() {
-        val messageProcessor: (ServiceBusReceivedMessageContext) -> Unit = {
+    class TruckPanel(frame: JFrame) : JPanel() {
+        private lateinit var truck: Truck
+        private val messageProcessor: (ServiceBusReceivedMessageContext) -> Unit = {
             SwingUtilities.invokeLater {
                 val value = Gson().fromJson(it.message.body.toString(), JsonObject::class.java)["patch"]
                     .asJsonArray.first().asJsonObject
@@ -84,88 +80,101 @@ object TruckGUI {
             }
         }
 
-        private val id = JLabel("Id: ${truck.truckId}")
-        private val position = JLabel("Position:")
-        private val latitude = JSpinner().also {
-            it.value = truck.position.latitude
-            it.preferredSize = CustomDimension()
-            it.maximumSize = CustomDimension()
-            it.minimumSize = CustomDimension()
-            it.addChangeListener { e ->
-                AzureDriver.DigitalTwins.updateLatitude(
-                    truck.truckId,
-                    when ((e.source as JSpinner).value) {
-                        is Int -> ((e.source as JSpinner).value as Int).toDouble()
-                        else -> (e.source as JSpinner).value as Double
-                    }
-                )
+        private lateinit var latitude: JSpinner
+        private lateinit var longitude: JSpinner
+        private lateinit var occupiedVolume: JSpinner
+        private lateinit var capacity: JLabel
+        private lateinit var inMission: JLabel
+        private lateinit var startMission: JButton
+
+        init {
+            this.layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            val truckId = JOptionPane.showInputDialog(frame,"Insert the Truck's ID","Truck ID", JOptionPane.PLAIN_MESSAGE) as String
+            try {
+                truck = AzureDriver.DigitalTwins.getTruck(truckId)
+                showDigitalTwin()
+                this.add(JLabel("Id: ${truck.truckId}"))
+                this.add(CustomFormElement("Position:", this.latitude, this.longitude))
+                this.add(CustomFormElement("Occupied volume (L):", this.occupiedVolume))
+                this.add(this.capacity)
+                this.add(this.inMission)
+                this.add(this.startMission)
+                frame.add(this)
+                frame.isVisible = true
+                AzureDriver.Events.listenToEvents(this.messageProcessor)
+            } catch (_: ErrorResponseException) {
+                this.add(JTextArea("Dumpster Not Found"))
             }
         }
-        private val longitude = JSpinner().also {
-            it.value = truck.position.longitude
-            it.preferredSize = CustomDimension()
-            it.maximumSize = CustomDimension()
-            it.minimumSize = CustomDimension()
-            it.addChangeListener { e ->
-                AzureDriver.DigitalTwins.updateLongitude(
-                    truck.truckId,
-                    when ((e.source as JSpinner).value) {
-                        is Int -> ((e.source as JSpinner).value as Int).toDouble()
-                        else -> (e.source as JSpinner).value as Double
-                    }
-                )
+
+        private fun showDigitalTwin() {
+            latitude = JSpinner().also {
+                it.value = truck.position.latitude
+                it.preferredSize = CustomDimension()
+                it.maximumSize = CustomDimension()
+                it.minimumSize = CustomDimension()
+                it.addChangeListener { e ->
+                    AzureDriver.DigitalTwins.updateLatitude(
+                        truck.truckId,
+                        when ((e.source as JSpinner).value) {
+                            is Int -> ((e.source as JSpinner).value as Int).toDouble()
+                            else -> (e.source as JSpinner).value as Double
+                        }
+                    )
+                }
             }
-        }
-        private val volume = JLabel("Occupied volume (L):")
-        private val occupiedVolume = JSpinner().also {
-            it.value = truck.occupiedVolume.value
-            it.preferredSize = CustomDimension()
-            it.maximumSize = CustomDimension()
-            it.minimumSize = CustomDimension()
-            it.addChangeListener { e ->
-                AzureDriver.DigitalTwins.updateVolume(
-                    truck.truckId,
-                    when ((e.source as JSpinner).value) {
-                        is Int -> ((e.source as JSpinner).value as Int).toDouble()
-                        else -> (e.source as JSpinner).value as Double
-                    }
-                )
+            longitude = JSpinner().also {
+                it.value = truck.position.longitude
+                it.preferredSize = CustomDimension()
+                it.maximumSize = CustomDimension()
+                it.minimumSize = CustomDimension()
+                it.addChangeListener { e ->
+                    AzureDriver.DigitalTwins.updateLongitude(
+                        truck.truckId,
+                        when ((e.source as JSpinner).value) {
+                            is Int -> ((e.source as JSpinner).value as Int).toDouble()
+                            else -> (e.source as JSpinner).value as Double
+                        }
+                    )
+                }
             }
-        }
-        private val capacity = JLabel("Capacity (L): ${truck.capacity}")
-        private val inMission = JLabel("In mission: ${truck.isInMission}")
-        private val startMission = JButton("Start Mission").also {
-            it.isEnabled = false
-            it.addChangeListener { e ->
-                (e.source as JButton).isEnabled = false
-                val collectionPoints = getCollectionPoints()
-                val mission = getMission(truck.truckId)
-                val steps = mission?.missionSteps
+            occupiedVolume = JSpinner().also {
+                it.value = truck.occupiedVolume.value
+                it.preferredSize = CustomDimension()
+                it.maximumSize = CustomDimension()
+                it.minimumSize = CustomDimension()
+                it.addChangeListener { e ->
+                    AzureDriver.DigitalTwins.updateVolume(
+                        truck.truckId,
+                        when ((e.source as JSpinner).value) {
+                            is Int -> ((e.source as JSpinner).value as Int).toDouble()
+                            else -> (e.source as JSpinner).value as Double
+                        }
+                    )
+                }
+            }
+            capacity = JLabel("Capacity (L): ${truck.capacity}")
+            inMission = JLabel("In mission: ${truck.isInMission}")
+            startMission = JButton("Start Mission").also {
+                it.isEnabled = false
+                it.addChangeListener { e ->
+                    (e.source as JButton).isEnabled = false
+                    val collectionPoints = getCollectionPoints()
+                    val mission = getMission(truck.truckId)
+                    val steps = mission?.missionSteps
                         ?.map { collectionPoints.first { cp -> cp.id == it.stepId }.position }
                         ?.toMutableList().also { pos -> pos?.add(0, truck.position) }
                         ?.zipWithNext()
                         ?.map { p -> getRoute(p.first, p.second) }
-                suspend {
-                    coroutineScope {
-                        launch {
-                            steps?.forEachIndexed { i, s -> simulateStep(mission, i, s) }
+                    suspend {
+                        coroutineScope {
+                            launch {
+                                steps?.forEachIndexed { i, s -> simulateStep(mission, i, s) }
+                            }
                         }
                     }
                 }
             }
-        }
-
-        init {
-            this.layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            this.add(this.id)
-            this.add(CustomFormElement("Position:", this.latitude, this.longitude))
-            this.add(CustomFormElement("Occupied volume (L):", this.occupiedVolume))
-            this.add(this.capacity)
-            this.add(this.inMission)
-            this.add(this.startMission)
-            frame.add(this)
-            frame.isVisible = true
-            AzureDriver.Events.listenToEvents(this)
         }
     }
 

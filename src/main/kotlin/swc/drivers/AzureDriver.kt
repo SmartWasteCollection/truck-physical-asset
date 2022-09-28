@@ -7,6 +7,7 @@ import com.azure.digitaltwins.core.DigitalTwinsClientBuilder
 import com.azure.identity.AzureCliCredentialBuilder
 import com.azure.messaging.servicebus.ServiceBusClientBuilder
 import com.azure.messaging.servicebus.ServiceBusProcessorClient
+import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext
 import io.github.cdimascio.dotenv.dotenv
 import swc.drivers.JsonDriver.parse
 import swc.drivers.JsonDriver.toTruck
@@ -15,27 +16,27 @@ import swc.view.TruckGUI
 
 object AzureDriver {
     object Constants {
-        val DT_SERVICE_ENDPOINT: String = dotenv()["DT_SERVICE_ENDPOINT"]
-        val CONNECTION_STRING: String = dotenv()["CONNECTION_STRING"]
+        const val DT_SERVICE_ENDPOINT: String = "https://test-instance.api.wcus.digitaltwins.azure.net/"
     }
 
     object Authentication {
         val client = authenticate { AzureCliCredentialBuilder().build() }
-        var eventsClient: ServiceBusProcessorClient? = null
+        lateinit var eventsClient: ServiceBusProcessorClient
 
         private fun authenticate(builder: () -> TokenCredential): DigitalTwinsClient = DigitalTwinsClientBuilder()
             .credential(builder())
             .endpoint(Constants.DT_SERVICE_ENDPOINT)
             .buildClient()
 
-        fun authenticateEvents(panel: TruckGUI.TruckPanel): ServiceBusProcessorClient = ServiceBusClientBuilder()
-            .connectionString(Constants.CONNECTION_STRING)
+        fun authenticateEvents(processMethod: (context: ServiceBusReceivedMessageContext) -> Unit): ServiceBusProcessorClient = ServiceBusClientBuilder()
+            .connectionString(dotenv()["SERVICE_BUS_CONNECTION_STRING"])
             .processor()
             .topicName("trucks-topic")
             .subscriptionName("trucks-subscription")
-            .processMessage(panel.messageProcessor)
+            .processMessage { processMethod(it) }
             .processError { println("ERROR: ${it.exception.cause}") }
             .buildProcessorClient()
+            .also { eventsClient = it }
     }
 
     object DigitalTwins {
@@ -56,9 +57,9 @@ object AzureDriver {
     }
 
     object Events {
-        fun listenToEvents(panel: TruckGUI.TruckPanel) {
-            Authentication.authenticateEvents(panel).also { Authentication.eventsClient = it }
-            Authentication.eventsClient?.start()
+        fun listenToEvents(processMethod: (context: ServiceBusReceivedMessageContext) -> Unit) {
+            Authentication.authenticateEvents(processMethod)
+            Authentication.eventsClient.start()
         }
     }
 }

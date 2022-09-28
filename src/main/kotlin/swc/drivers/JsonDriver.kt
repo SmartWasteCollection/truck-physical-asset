@@ -63,7 +63,7 @@ object JsonDriver {
     )
 
     fun JsonObject.toTruck(): Truck = Truck(
-        this[Fields.TRUCK_DT_ID].asString,
+        this[Fields.TRUCK_ID].asString,
         this[Fields.POSITION].asJsonObject.toPosition(),
         this[Fields.OCCUPIED_VOLUME].asJsonObject.toVolume(),
         this[Fields.CAPACITY].asDouble,

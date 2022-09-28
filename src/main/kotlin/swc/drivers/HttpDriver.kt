@@ -6,23 +6,23 @@ import swc.drivers.JsonDriver.toCollectionPoint
 import swc.drivers.JsonDriver.toDumpster
 import swc.drivers.JsonDriver.toGraphHopperPositions
 import swc.drivers.JsonDriver.toMission
+import swc.drivers.JsonDriver.toTruck
 import swc.entities.*
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
-import java.net.http.HttpRequest.BodyPublisher
 import java.net.http.HttpResponse
 
 object HttpDriver {
     private val client: HttpClient = HttpClient.newHttpClient()
-    private const val domain: String = "https://localhost:3000"
-    private const val missionURL: String = "$domain/missions"
-    private const val collectionPointURL: String = "$domain/collectionpoints"
+    private const val missionURL: String = "http://localhost:3004/missions"
+    private const val collectionPointURL: String = "http://localhost:3000/collectionpoints"
+    private val truckURL: (String) -> String = { truckId: String -> "http://localhost:3001/trucks/$truckId" }
     private val dumpstersInCollectionPointURL: (String) -> String = { collectionPointId: String ->
-        "$domain/collectionpoints/$collectionPointId/dumpsters"
+        "http://localhost:3000/collectionpoints/$collectionPointId/dumpsters"
     }
     private val emptyDumpsterURL: (String) -> String = { dumpsterId: String ->
-        "$domain/dumpsters/volume/$dumpsterId"
+        "http://localhost:3000/dumpsters/volume/$dumpsterId"
     }
     private val routeURL: (Position, Position) -> String = { point1: Position, point2: Position ->
         "https://graphhopper.com/api/1/route?point=${point1.latitude},${point1.longitude}"+
@@ -36,6 +36,11 @@ object HttpDriver {
             .map { it.asJsonObject.toMission() }
             .filter { !it.isCompleted() }
             .find { it.truckId == truckId }
+    }
+
+    fun getTruck(truckId: String): Truck {
+        val response = sendRequest(truckURL(truckId))
+        return parse(response.body().also { println(it) }).toTruck()
     }
 
     fun getCollectionPoints(): List<CollectionPoint> {
@@ -66,6 +71,7 @@ object HttpDriver {
     private fun sendRequest(uri: String): HttpResponse<String> {
         val request = HttpRequest.newBuilder()
                 .uri(URI.create(uri))
+                .GET()
                 .header("accept", "application/json")
                 .build()
 
