@@ -4,6 +4,7 @@ import kotlinx.coroutines.delay
 import swc.drivers.AzureDriver.DigitalTwins.updateLatitude
 import swc.drivers.AzureDriver.DigitalTwins.updateLongitude
 import swc.drivers.AzureDriver.DigitalTwins.updateVolume
+import swc.drivers.HttpDriver.completeMissionStep
 import swc.drivers.HttpDriver.emptyDumpster
 import swc.drivers.HttpDriver.getDumpstersInCollectionPoint
 import swc.entities.Mission
@@ -33,16 +34,17 @@ object Operations {
             Thread.sleep(1000)
         }
         println("Raggiunto il Collection Point ${mission?.missionSteps?.get(index)?.stepId}")
-        val dumpsters = mission?.missionSteps
+        mission?.missionSteps
             ?.get(index)
             ?.stepId
             ?.let { getDumpstersInCollectionPoint(it) }
-        dumpsters?.filter { it.dumpsterType.typeOfOrdinaryWaste.wasteName == mission.typeOfWaste.wasteName }
+            ?.filter { it.dumpsterType.typeOfOrdinaryWaste.wasteName == mission.typeOfWaste.wasteName }
             ?.forEach { d ->
                 mission.truckId?.let { t -> updateVolume(t, truck.occupiedVolume.value + d.occupiedVolume.value) }
                 emptyDumpster(d.id)
                 println("Svuotato il Dumpster ${d.id}")
             }
+        completeMissionStep(mission!!.missionSteps[index].stepId)
         Thread.sleep(1000)
     }
 }

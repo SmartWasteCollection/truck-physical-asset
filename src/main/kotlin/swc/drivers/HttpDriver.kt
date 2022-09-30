@@ -17,9 +17,10 @@ object HttpDriver {
     private val client: HttpClient = HttpClient.newHttpClient()
     private const val missionURL: String = "http://localhost:3004/missions"
     private const val collectionPointURL: String = "http://localhost:3000/collectionpoints"
-    private val truckURL: (String) -> String = { truckId: String -> "http://localhost:3001/trucks/$truckId" }
-    private val dumpstersInCollectionPointURL: (String) -> String = { collectionPointId: String ->
-        "http://localhost:3000/collectionpoints/$collectionPointId/dumpsters"
+    private val truckURL: (String) -> String = { "http://localhost:3001/trucks/$it" }
+    private val missionStepCompletionURL: (String) -> String = { "http://localhost:3004/missions/$it/step" }
+    private val dumpstersInCollectionPointURL: (String) -> String = {
+        "http://localhost:3000/collectionpoints/$it/dumpsters"
     }
     private val emptyDumpsterURL: (String) -> String = { dumpsterId: String ->
         "http://localhost:3000/dumpsters/volume/$dumpsterId"
@@ -76,6 +77,16 @@ object HttpDriver {
                 .build()
 
         return client.send(request, HttpResponse.BodyHandlers.ofString())
+    }
+
+    fun completeMissionStep(stepId: String) {
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create(missionStepCompletionURL(stepId)))
+            .PUT(HttpRequest.BodyPublishers.noBody())
+            .header("accept", "application/json")
+            .build()
+
+        client.send(request, HttpResponse.BodyHandlers.ofString())
     }
 
 }
