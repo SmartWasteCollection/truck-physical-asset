@@ -23,23 +23,26 @@ object Operations {
         }
     }
 
-    suspend fun simulateStep(mission: Mission<Waste>?, index: Int, positions: List<Position>) {
+    fun simulateStep(mission: Mission<Waste>?, index: Int, positions: List<Position>, truck: Truck) {
         positions.forEach {
             mission?.truckId?.let { t ->
                 updateLatitude(t, it.latitude)
                 updateLongitude(t, it.longitude)
             }
-            delay(2000)
+            println("Moving to ${it.latitude}:${it.longitude} ...")
+            Thread.sleep(1000)
         }
+        println("Raggiunto il Collection Point ${mission?.missionSteps?.get(index)?.stepId}")
         val dumpsters = mission?.missionSteps
             ?.get(index)
             ?.stepId
             ?.let { getDumpstersInCollectionPoint(it) }
         dumpsters?.filter { it.dumpsterType.typeOfOrdinaryWaste.wasteName == mission.typeOfWaste.wasteName }
             ?.forEach { d ->
-                mission.truckId?.let { t -> updateVolume(t, d.occupiedVolume.value) }
+                mission.truckId?.let { t -> updateVolume(t, truck.occupiedVolume.value + d.occupiedVolume.value) }
                 emptyDumpster(d.id)
+                println("Svuotato il Dumpster ${d.id}")
             }
-        delay(2000)
+        Thread.sleep(1000)
     }
 }
