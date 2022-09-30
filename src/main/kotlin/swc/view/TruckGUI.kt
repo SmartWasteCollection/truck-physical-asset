@@ -4,18 +4,17 @@ import com.azure.digitaltwins.core.implementation.models.ErrorResponseException
 import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import swc.drivers.AzureDriver
 import swc.drivers.HttpDriver.getCollectionPoints
 import swc.drivers.HttpDriver.getMission
 import swc.drivers.HttpDriver.getRoute
-import swc.drivers.HttpDriver.getTruck
 import swc.drivers.Operations
 import swc.drivers.Operations.simulateStep
+import swc.entities.Position
 import swc.entities.Truck
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.util.concurrent.Executors
 import javax.swing.*
 
 object TruckGUI {
@@ -86,6 +85,7 @@ object TruckGUI {
         private lateinit var capacity: JLabel
         private lateinit var inMission: JLabel
         private lateinit var startMission: JButton
+        private val disposalPointPosition = Position(latitude = 44.147413, longitude = 12.187121)
 
         init {
             this.layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -153,24 +153,23 @@ object TruckGUI {
                     )
                 }
             }
+
             capacity = JLabel("Capacity (L): ${truck.capacity}")
             inMission = JLabel("In mission: ${truck.isInMission}")
             startMission = JButton("Start Mission").also {
-                it.isEnabled = false
-                it.addChangeListener { e ->
-                    (e.source as JButton).isEnabled = false
-                    val collectionPoints = getCollectionPoints()
-                    val mission = getMission(truck.truckId)
-                    val steps = mission?.missionSteps
-                        ?.map { collectionPoints.first { cp -> cp.id == it.stepId }.position }
-                        ?.toMutableList().also { pos -> pos?.add(0, truck.position) }
-                        ?.zipWithNext()
-                        ?.map { p -> getRoute(p.first, p.second) }
-                    suspend {
-                        coroutineScope {
-                            launch {
-                                steps?.forEachIndexed { i, s -> simulateStep(mission, i, s) }
-                            }
+                it.isEnabled = truck.isInMission
+                it.addActionListener { e ->
+                    SwingUtilities.invokeLater {
+                        (e.source as JButton).isEnabled = false
+                        val collectionPoints = getCollectionPoints()
+                        val mission = getMission(truck.truckId)
+                        val steps = mission?.missionSteps
+                            ?.map { collectionPoints.first { cp -> cp.id == it.stepId }.position }
+                            ?.toMutableList().also { pos -> pos?.add(0, disposalPointPosition) }
+                            ?.zipWithNext()
+                            ?.map { p -> getRoute(p.first, p.second) }
+                        Executors.newSingleThreadExecutor().execute {
+                            steps?.forEachIndexed { i, s -> simulateStep(mission, i, s, truck) }
                         }
                     }
                 }
