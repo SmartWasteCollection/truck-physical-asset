@@ -1,6 +1,7 @@
 package swc.drivers
 
 import com.google.gson.JsonArray
+import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import swc.drivers.JsonDriver.Fields.COORDINATES
@@ -50,7 +51,7 @@ object JsonDriver {
 
     fun JsonObject.toMission(): Mission<Waste> = Mission(
         this[Fields.MISSION_ID].asString,
-        this[Fields.TRUCK_ID].asString.orNull(),
+        if (this[Fields.TRUCK_ID].isJsonNull) null else this[Fields.TRUCK_ID].asString,
         LocalDate.parse(this[Fields.DATE].asString),
         this[Fields.TYPE_OF_WASTE].asJsonObject.toTypeOfWaste(),
         this[Fields.TYPE_OF_MISSION].asString.toTypeOfMission(),
@@ -63,7 +64,7 @@ object JsonDriver {
     )
 
     fun JsonObject.toTruck(): Truck = Truck(
-        this[Fields.TRUCK_ID].asString,
+        this[Fields.TRUCK_DT_ID].asString,
         this[Fields.POSITION].asJsonObject.toPosition(),
         this[Fields.OCCUPIED_VOLUME].asJsonObject.toVolume(),
         this[Fields.CAPACITY].asDouble,
@@ -74,10 +75,10 @@ object JsonDriver {
         this[Fields.DUMPSTER_ID].asString,
         TypeOfDumpster(
             Size(
-                this[Fields.DUMPSTER_TYPE].asJsonObject[Fields.DIMENSION].asString.toDimension(),
-                this[Fields.DUMPSTER_TYPE].asJsonObject[Fields.CAPACITY].asDouble
+                this[Fields.DUMPSTER_TYPE].asJsonObject["size"].asJsonObject[Fields.DIMENSION].asString.toDimension(),
+                this[Fields.DUMPSTER_TYPE].asJsonObject["size"].asJsonObject[Fields.CAPACITY].asDouble
             ),
-            this[Fields.DUMPSTER_TYPE].asJsonObject.toTypeOfWaste()
+            this[Fields.DUMPSTER_TYPE].asJsonObject["typeOfOrdinaryWaste"].asJsonObject.toTypeOfWaste()
         ),
         this[Fields.OPEN].asBoolean,
         this[Fields.OCCUPIED_VOLUME].asJsonObject.toVolume(),
@@ -88,7 +89,7 @@ object JsonDriver {
             this.getAsJsonArray(PATHS).get(0).asJsonObject
                     .getAsJsonObject(POINTS)
                     .getAsJsonArray(COORDINATES)
-                    .map { Position(it.asJsonArray[0].asDouble, it.asJsonArray[1].asDouble) }
+                    .map { Position(it.asJsonArray[1].asDouble, it.asJsonArray[0].asDouble) }
 
     private fun String.toDimension(): Dimension = when (this) {
         SMALL -> Dimension.SMALL
