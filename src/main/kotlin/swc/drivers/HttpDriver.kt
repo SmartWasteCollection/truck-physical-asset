@@ -40,7 +40,7 @@ object HttpDriver {
 
     fun getTruck(truckId: String): Truck {
         val response = sendRequest(truckURL(truckId))
-        return parse(response.body().also { println(it) }).toTruck()
+        return parse(response.body()).toTruck()
     }
 
     fun getCollectionPoints(): List<CollectionPoint> {
