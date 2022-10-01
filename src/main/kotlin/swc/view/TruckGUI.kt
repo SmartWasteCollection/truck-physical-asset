@@ -12,8 +12,7 @@ import swc.drivers.Operations
 import swc.drivers.Operations.simulateStep
 import swc.entities.Position
 import swc.entities.Truck
-import java.awt.Dimension
-import java.awt.FlowLayout
+import java.awt.*
 import java.util.concurrent.Executors
 import javax.swing.*
 
@@ -22,10 +21,20 @@ object TruckGUI {
         init {
             this.title = title
             this.defaultCloseOperation = EXIT_ON_CLOSE
-            this.size = Dimension(800, 600)
+            this.size = Dimension(800, 300)
             this.setLocationRelativeTo(null)
             //this.add(SelectTruckPanel(this))
             this.add(TruckPanel(this))
+        }
+    }
+
+    class CustomTextArea(content: String): JTextPane() {
+        init {
+            text = content
+            isOpaque = true
+            isEditable = false
+            isFocusable = false
+            font = Font("Courier", Font.BOLD, 20)
         }
     }
 
@@ -50,12 +59,12 @@ object TruckGUI {
         }
     }
 
-    class CustomDimension : Dimension(120, 20)
+    class CustomDimension : Dimension(300, 30)
 
     class CustomFormElement(title: String, vararg components: JComponent) : JPanel() {
         init {
             this.layout = BoxLayout(this, BoxLayout.X_AXIS)
-            this.add(JLabel(title))
+            this.add(CustomTextArea(title))
             components.forEach { this.add(it) }
         }
     }
@@ -78,36 +87,36 @@ object TruckGUI {
                 }
             }
         }
-
         private lateinit var latitude: JSpinner
         private lateinit var longitude: JSpinner
         private lateinit var occupiedVolume: JSpinner
-        private lateinit var capacity: JLabel
-        private lateinit var inMission: JLabel
+        private lateinit var inMission: CustomTextArea
         private lateinit var startMission: JButton
         private val disposalPointPosition = Position(latitude = 44.147413, longitude = 12.187121)
+        private lateinit var contentPanel: JComponent
 
         init {
-            this.layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            layout = BorderLayout()
             val truckId = JOptionPane.showInputDialog(frame,"Insert the Truck's ID","Truck ID", JOptionPane.PLAIN_MESSAGE) as String
             try {
                 truck = AzureDriver.DigitalTwins.getTruck(truckId)
                 showDigitalTwin()
-                this.add(JLabel("Id: ${truck.truckId}"))
-                this.add(CustomFormElement("Position:", this.latitude, this.longitude))
-                this.add(CustomFormElement("Occupied volume (L):", this.occupiedVolume))
-                this.add(this.capacity)
-                this.add(this.inMission)
-                this.add(this.startMission)
-                frame.add(this)
                 frame.isVisible = true
                 AzureDriver.Events.listenToEvents(this.messageProcessor)
             } catch (_: ErrorResponseException) {
-                this.add(JTextArea("Dumpster Not Found"))
+                contentPanel = JTextArea("Truck Not Found")
             }
+            add(contentPanel, BorderLayout.CENTER)
         }
 
         private fun showDigitalTwin() {
+            val dtPanel = JPanel()
+            val vbox = Box.createVerticalBox()
+            val title = CustomTextArea("Truck Physical Asset")
+            title.componentOrientation = ComponentOrientation.RIGHT_TO_LEFT
+            vbox.add(title)
+            vbox.add(CustomTextArea("Id: ${truck.truckId}"))
+
             latitude = JSpinner().also {
                 it.value = truck.position.latitude
                 it.preferredSize = CustomDimension()
@@ -123,6 +132,7 @@ object TruckGUI {
                     )
                 }
             }
+
             longitude = JSpinner().also {
                 it.value = truck.position.longitude
                 it.preferredSize = CustomDimension()
@@ -138,6 +148,8 @@ object TruckGUI {
                     )
                 }
             }
+            vbox.add(CustomFormElement("Position: ", latitude, longitude))
+
             occupiedVolume = JSpinner().also {
                 it.value = truck.occupiedVolume.value
                 it.preferredSize = CustomDimension()
@@ -153,11 +165,18 @@ object TruckGUI {
                     )
                 }
             }
+            vbox.add(CustomFormElement("Occupied volume (L):", occupiedVolume))
 
-            capacity = JLabel("Capacity (L): ${truck.capacity}")
-            inMission = JLabel("In mission: ${truck.isInMission}")
+            vbox.add(CustomTextArea("Capacity (L): ${truck.capacity}"))
+            inMission = CustomTextArea("In mission: ${truck.isInMission}")
+            vbox.add(inMission)
+
             startMission = JButton("Start Mission").also {
                 it.isEnabled = truck.isInMission
+                it.preferredSize = CustomDimension()
+                it.minimumSize = CustomDimension()
+                it.maximumSize = CustomDimension()
+                it.font = Font("Courier", Font.BOLD, 20)
                 it.addActionListener { e ->
                     SwingUtilities.invokeLater {
                         (e.source as JButton).isEnabled = false
@@ -174,6 +193,12 @@ object TruckGUI {
                     }
                 }
             }
+            vbox.add(startMission)
+
+            dtPanel.layout = BoxLayout(dtPanel, BoxLayout.Y_AXIS)
+            dtPanel.add(vbox)
+            contentPanel = dtPanel
+
         }
     }
 
