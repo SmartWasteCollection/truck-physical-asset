@@ -44,7 +44,7 @@ object Operations {
                 emptyDumpster(d.id)
                 println("Svuotato il Dumpster ${d.id}")
             }
-        completeMissionStep(mission!!.missionSteps[index].stepId)
+        completeMissionStep(mission!!.missionId)
         Thread.sleep(1000)
     }
 }
